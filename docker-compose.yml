@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  database:
+    image: postgres:latest
+    container_name: my_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgresAdmin
+      POSTGRES_PASSWORD: 1234
+      POSTGRES_DB: mydb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgresAdmin -d mydb || psql -U postgresAdmin -d mydb -c 'SELECT 1'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - my_network  # Adiciona o contêiner à rede
+
+  app:
+    build: .
+    container_name: my_app
+    restart: always
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://postgresAdmin:1234@database:5432/mydb?schema=public"
+    ports:
+      - "3000:3000"
+    command: sh -c "sleep 10 && yarn dev"
+    networks:
+      - my_network  # Adiciona o contêiner à rede
+
+volumes:
+  postgres_data:
+
+networks:
+  my_network:  # Define a rede
+    driver: bridge # Explicitamente define o driver como bridge
